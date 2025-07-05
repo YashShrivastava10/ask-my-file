@@ -62,7 +62,7 @@ export const FileUploader = () => {
 
                 <input
                   type="file"
-                  accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                  accept=".pdf,.docx,.txt,.jpg,.jpeg,.png"
                   onChange={handleFileSelect}
                   className="hidden"
                   id="file-upload"

@@ -25,7 +25,7 @@ const mockDocument = {
 };
 
 const ChatPage = () => {
-  const [sidebarWidth, setSidebarWidth] = useState(320); // default 320px
+  const [sidebarWidth, setSidebarWidth] = useState(320);
   const isResizing = useRef(false);
 
   const startResizing = () => {

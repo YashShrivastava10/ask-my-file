@@ -36,14 +36,27 @@ export const useFile = () => {
 
   const handleUpload = async (file: File) => {
     setIsUploading(true);
-    console.log(file);
+
+    const formData = new FormData();
+    formData.append("file", file);
 
     // Simulate upload
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
+    const response = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
+    const result = await response.json();
+
+    if (result.error) throw new Error(result.error);
+
+    console.log(result);
+
+    const { docId } = result;
     setIsUploading(false);
 
-    router.push(`/chat/doc-${Date.now()}`);
+    router.push(`/chat/${docId}`);
   };
 
   return {
