@@ -49,11 +49,10 @@ export const useFile = () => {
     });
     const result = await response.json();
 
-    if (result.error) throw new Error(result.error);
+    if (!result.status) throw new Error(result.message);
 
     console.log(result);
-
-    const { docId } = result;
+    const { docId } = result.data;
     setIsUploading(false);
 
     router.push(`/chat/${docId}`);

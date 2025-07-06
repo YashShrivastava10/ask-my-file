@@ -1,47 +1,48 @@
-import { Plus } from "lucide-react";
+import { Chat } from "@/app/chat/page";
+import { MessageSquare, Plus } from "lucide-react";
 import { Button } from "../ui";
 import { ChatList } from "./ChatList";
 
-const mockChats = [
-  {
-    id: "doc-1",
-    title: "Annual Report 2023.pdf",
-    timestamp: "2 hours ago",
-    preview: "Financial performance analysis and key metrics...",
-  },
-  {
-    id: "doc-2",
-    title: "Project Proposal.docx",
-    timestamp: "1 day ago",
-    preview: "Comprehensive project timeline and budget breakdown...",
-  },
-  {
-    id: "doc-3",
-    title: "Research Paper.pdf",
-    timestamp: "3 days ago",
-    preview: "Machine learning applications in healthcare...",
-  },
-  {
-    id: "doc-4",
-    title: "Research Paper.pdf",
-    timestamp: "3 days ago",
-    preview: "Machine learning applications in healthcare...",
-  },
-  {
-    id: "doc-5",
-    title: "Research Paper.pdf",
-    timestamp: "3 days ago",
-    preview: "Machine learning applications in healthcare...",
-  },
-  {
-    id: "doc-6",
-    title: "Research Paper.pdf",
-    timestamp: "3 days ago",
-    preview: "Machine learning applications in healthcare...",
-  },
-];
+// const mockChats = [
+//   {
+//     id: "doc-1",
+//     title: "Annual Report 2023.pdf",
+//     timestamp: "2 hours ago",
+//     preview: "Financial performance analysis and key metrics...",
+//   },
+//   {
+//     id: "doc-2",
+//     title: "Project Proposal.docx",
+//     timestamp: "1 day ago",
+//     preview: "Comprehensive project timeline and budget breakdown...",
+//   },
+//   {
+//     id: "doc-3",
+//     title: "Research Paper.pdf",
+//     timestamp: "3 days ago",
+//     preview: "Machine learning applications in healthcare...",
+//   },
+//   {
+//     id: "doc-4",
+//     title: "Research Paper.pdf",
+//     timestamp: "3 days ago",
+//     preview: "Machine learning applications in healthcare...",
+//   },
+//   {
+//     id: "doc-5",
+//     title: "Research Paper.pdf",
+//     timestamp: "3 days ago",
+//     preview: "Machine learning applications in healthcare...",
+//   },
+//   {
+//     id: "doc-6",
+//     title: "Research Paper.pdf",
+//     timestamp: "3 days ago",
+//     preview: "Machine learning applications in healthcare...",
+//   },
+// ];
 
-export const ChatSidebar = () => {
+export const ChatSidebar = ({ chats }: { chats: Chat[] }) => {
   return (
     <div className="flex flex-col gap-0 pb-4 pr-0 md:pr-4 pt-0 pl-0 h-full md:overflow-hidden md:overflow-y-scroll">
       <div className="sticky top-0 z-20 md:static bg-background flex items-center justify-between pb-4">
@@ -72,9 +73,19 @@ export const ChatSidebar = () => {
         </div>
       </div>
       <div className="flex flex-col gap-4 h-full">
-        {mockChats.map((chat) => (
-          <ChatList key={chat.id} chat={chat} />
-        ))}
+        {!chats.length ? (
+          <div className="text-center py-8">
+            <div className="mb-4 rounded-full bg-muted-foreground p-4 mx-auto w-fit">
+              <MessageSquare className="h-8 w-8" />
+            </div>
+            <h3 className="text-lg font-medium mb-2">No conversations yet</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Upload your first document to start chatting with your files
+            </p>
+          </div>
+        ) : (
+          chats.map((chat) => <ChatList key={chat.docId} chat={chat} />)
+        )}
       </div>
     </div>
   );

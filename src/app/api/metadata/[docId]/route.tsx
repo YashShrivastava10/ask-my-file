@@ -1,9 +1,10 @@
+import { errorResponse, successResponse } from "@/utils";
 import { readFileSync } from "fs";
-import { NextRequest, NextResponse } from "next/server";
+import { NextApiRequest } from "next";
 import path from "path";
 
 export async function GET(
-  request: NextRequest,
+  request: NextApiRequest,
   { params }: { params: Promise<{ docId: string }> }
 ) {
   try {
@@ -11,11 +12,14 @@ export async function GET(
 
     const filePath = path.join(process.cwd(), "src", "temp", `${docId}.json`);
     const fileContent = readFileSync(filePath, "utf-8");
+
     const { metadata } = JSON.parse(fileContent);
 
-    return NextResponse.json({ sucess: true, metadata }, { status: 200 });
+    return successResponse({
+      data: metadata,
+      message: "Metadata successfult fetched",
+    });
   } catch (e) {
-    console.log(e);
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+    if (e instanceof Error) return errorResponse({ message: e.message });
   }
 }

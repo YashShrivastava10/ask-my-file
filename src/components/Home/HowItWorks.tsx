@@ -42,8 +42,8 @@ export const HowItWorks = () => {
                   </div>
                 </div>
 
-                <div className="flex justify-center">
-                  <step.icon className="p-2 bg-primary/10 size-12 text-primary group-hover:bg-primary/20 rounded-full group-hover:scale-105 transition-all" />
+                <div className="text-primary group-hover:bg-primary/20 rounded-full group-hover:scale-105 transition-all bg-primary/10 p-3 mx-auto w-fit size-12">
+                  <step.icon className="size-full" />
                 </div>
 
                 <h3 className="text-xl font-semibold">{step.title}</h3>

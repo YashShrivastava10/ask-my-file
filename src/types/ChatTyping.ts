@@ -1,13 +1,11 @@
 export type ChatListType = {
-  id: string;
+  docId: string;
   title: string;
-  timestamp: string;
-  preview: string;
+  timeAgo: string;
+  summary: string;
 };
 
 export type ChatDetailsType = {
-  title: string;
-  summary: string;
   metadata: {
     pages: number;
     size: string;

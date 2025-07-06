@@ -1,43 +1,10 @@
 import { parseDocx, parsePDF } from "@/services";
 import parseImageWithCleanup from "@/services/parseImage";
+import { errorResponse, successResponse } from "@/utils";
 import { existsSync, mkdirSync, writeFileSync } from "fs";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import os from "os";
 import path from "path";
-
-function detectDocumentType(
-  text: string,
-  filename: string
-): "resume" | "mom" | "invoice" | "generic" {
-  const lowerText = text.toLowerCase();
-
-  if (
-    filename.toLowerCase().includes("resume") ||
-    (lowerText.includes("skills") &&
-      lowerText.includes("experience") &&
-      lowerText.includes("education"))
-  ) {
-    return "resume";
-  }
-
-  if (
-    lowerText.includes("minutes of meeting") ||
-    lowerText.includes("attendees") ||
-    lowerText.includes("action items")
-  ) {
-    return "mom";
-  }
-
-  if (
-    lowerText.includes("invoice") ||
-    lowerText.includes("bill to") ||
-    lowerText.includes("total amount")
-  ) {
-    return "invoice";
-  }
-
-  return "generic";
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,20 +12,18 @@ export async function POST(request: NextRequest) {
     const file = formData.get("file") as File;
 
     if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+      return errorResponse({ message: "No file provided", status: 400 });
     }
 
     const allowedTypes = [".pdf", ".docx", ".txt", ".jpg", ".jpeg", ".png"];
     const fileExtension = path.extname(file.name).toLowerCase();
 
     if (!allowedTypes.includes(fileExtension)) {
-      return NextResponse.json(
-        {
-          error:
-            "Invalid file type. Accepted types: PDF, DOCX, TXT, JPG, JPEG, PNG",
-        },
-        { status: 400 }
-      );
+      return errorResponse({
+        message:
+          "Invalid file type. Accepted types: PDF, DOCX, TXT, JPG, JPEG, PNG",
+        status: 400,
+      });
     }
 
     // Convert file to buffer
@@ -84,12 +49,10 @@ export async function POST(request: NextRequest) {
       const parser = parsers[fileExtension as keyof typeof parsers];
 
       if (!parser) {
-        return NextResponse.json(
-          {
-            error: "Unsupported file type",
-          },
-          { status: 400 }
-        );
+        return errorResponse({
+          message: "Unsupported file type",
+          status: 400,
+        });
       }
 
       extractedText = await parser();
@@ -97,8 +60,8 @@ export async function POST(request: NextRequest) {
       const docId = `doc-${Date.now()}`;
       const fileSize = (file.size / (1024 * 1024)).toFixed(2) + " MB";
       const fileName = file.name;
-      const documentType = detectDocumentType(extractedText, fileName);
 
+      const currentTime = new Date();
       const info = {
         docId,
         metadata: {
@@ -106,8 +69,8 @@ export async function POST(request: NextRequest) {
           fileName,
           fileType: fileExtension,
           pages: 2, // Placeholder for pages
-          uploadedAt: new Date(),
-          documentType,
+          uploadedAt: currentTime,
+          lastModified: currentTime,
         },
         extractedText,
       };
@@ -121,26 +84,18 @@ export async function POST(request: NextRequest) {
         "utf-8"
       );
 
-      return NextResponse.json({
-        success: true,
-        docId,
+      return successResponse({
+        data: { docId },
+        message: "File parsed successfully",
       });
     } catch (parseError) {
       console.error("Parsing error:", parseError);
-      return NextResponse.json(
-        {
-          error: "Failed to parse file content",
-        },
-        { status: 500 }
-      );
+      return errorResponse({ message: "Failed to parse" });
     }
   } catch (error) {
     console.error("Upload error:", error);
-    return NextResponse.json(
-      {
-        error: "Internal server error",
-      },
-      { status: 500 }
-    );
+    return errorResponse({
+      message: "Internal server error",
+    });
   }
 }
