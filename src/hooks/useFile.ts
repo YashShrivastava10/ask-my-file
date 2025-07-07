@@ -1,12 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export const useFile = () => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const router = useRouter();
+  // const router = useRouter();
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -51,11 +50,16 @@ export const useFile = () => {
 
     if (!result.status) throw new Error(result.message);
 
-    console.log(result);
-    const { docId } = result.data;
+    const { uploadUrl } = result.data;
+
+    await fetch(uploadUrl, {
+      method: "PUT",
+      mode: "cors",
+      body: file,
+    });
     setIsUploading(false);
 
-    router.push(`/chat/${docId}`);
+    // router.push(`/chat/${docId}`);
   };
 
   return {

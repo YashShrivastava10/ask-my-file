@@ -1,7 +1,9 @@
+import { generateS3UploadUrl } from "@/lib/s3";
 import { parseDocx, parsePDF } from "@/services";
 import parseImageWithCleanup from "@/services/parseImage";
 import { errorResponse, successResponse } from "@/utils";
 import { existsSync, mkdirSync, writeFileSync } from "fs";
+import mime from "mime-types";
 import { NextRequest } from "next/server";
 import os from "os";
 import path from "path";
@@ -61,6 +63,13 @@ export async function POST(request: NextRequest) {
       const fileSize = (file.size / (1024 * 1024)).toFixed(2) + " MB";
       const fileName = file.name;
 
+      const contentType = mime.lookup(file.name) || "application/octet-stream";
+      const fileLocation = `raw/${docId}${fileExtension}`;
+      const uploadUrl = await generateS3UploadUrl({
+        key: fileLocation,
+        contentType,
+      });
+
       const currentTime = new Date();
       const info = {
         docId,
@@ -85,7 +94,7 @@ export async function POST(request: NextRequest) {
       );
 
       return successResponse({
-        data: { docId },
+        data: { docId, uploadUrl },
         message: "File parsed successfully",
       });
     } catch (parseError) {
