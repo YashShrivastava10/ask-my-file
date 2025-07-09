@@ -1,14 +1,8 @@
 import { ChatSidebar } from "@/components/Chat/ChatSidebar";
 import NewUplaod from "@/components/Chat/NewUplaod";
 import { FileUploader } from "@/components/Home/FileUploader";
+import { Chat } from "@/types/ChatTyping";
 import { MessageSquare } from "lucide-react";
-
-export type Chat = {
-  docId: string;
-  summary: string;
-  timeAgo: string;
-  title: string;
-};
 
 type API_Response = {
   status: boolean;

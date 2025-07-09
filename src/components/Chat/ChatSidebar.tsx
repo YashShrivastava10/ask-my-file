@@ -1,46 +1,7 @@
-import { Chat } from "@/app/chat/page";
+import { Chat } from "@/types/ChatTyping";
 import { MessageSquare, Plus } from "lucide-react";
 import { Button } from "../ui";
 import { ChatList } from "./ChatList";
-
-// const mockChats = [
-//   {
-//     id: "doc-1",
-//     title: "Annual Report 2023.pdf",
-//     timestamp: "2 hours ago",
-//     preview: "Financial performance analysis and key metrics...",
-//   },
-//   {
-//     id: "doc-2",
-//     title: "Project Proposal.docx",
-//     timestamp: "1 day ago",
-//     preview: "Comprehensive project timeline and budget breakdown...",
-//   },
-//   {
-//     id: "doc-3",
-//     title: "Research Paper.pdf",
-//     timestamp: "3 days ago",
-//     preview: "Machine learning applications in healthcare...",
-//   },
-//   {
-//     id: "doc-4",
-//     title: "Research Paper.pdf",
-//     timestamp: "3 days ago",
-//     preview: "Machine learning applications in healthcare...",
-//   },
-//   {
-//     id: "doc-5",
-//     title: "Research Paper.pdf",
-//     timestamp: "3 days ago",
-//     preview: "Machine learning applications in healthcare...",
-//   },
-//   {
-//     id: "doc-6",
-//     title: "Research Paper.pdf",
-//     timestamp: "3 days ago",
-//     preview: "Machine learning applications in healthcare...",
-//   },
-// ];
 
 export const ChatSidebar = ({ chats }: { chats: Chat[] }) => {
   return (
