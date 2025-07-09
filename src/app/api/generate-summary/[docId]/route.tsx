@@ -1,108 +1,17 @@
-// import { SYSTEM_PROMPT, USER_PROMPT } from "@/constants";
-// import { errorResponse } from "@/utils";
-// import { readFileSync } from "fs";
-// import { NextRequest, NextResponse } from "next/server";
-// import OpenAI from "openai";
-// import path from "path";
-
-// export async function GET(
-//   request: NextRequest,
-//   { params }: { params: Promise<{ docId: string }> }
-// ) {
-//   try {
-//     const { docId } = await params;
-
-//     const filePath = path.join(process.cwd(), "src", "temp", `${docId}.json`);
-//     const fileContent = readFileSync(filePath, "utf-8");
-//     const { extractedText } = JSON.parse(fileContent);
-
-//     const user_prompt = USER_PROMPT.replace(
-//       "[[DOCUMENT_CONTENT_HERE]]",
-//       extractedText
-//     );
-
-//     const openai = new OpenAI({
-//       baseURL: process.env.OPENAI_URI,
-//       apiKey: process.env.OPENROUTER_API_KEY,
-//     });
-
-//     // const chat = await openai.chat.completions.create({
-//     //   model: process.env.AI_MODEL!,
-//     //   messages: [
-//     //     { role: "system", content: system_prompt },
-//     //     { role: "user", content: user_prompt },
-//     //   ],
-//     // });
-
-//     // const content = chat.choices[0].message.content;
-
-//     // if (!content) return errorResponse({ message: "Content is empty" });
-
-//     // let cleanedContent = content.trim();
-
-//     // if (
-//     //   cleanedContent.startsWith("```json") ||
-//     //   cleanedContent.startsWith("```")
-//     // ) {
-//     //   cleanedContent = cleanedContent
-//     //     .replace(/^```(?:json)?/, "")
-//     //     .replace(/```$/, "")
-//     //     .trim();
-//     // }
-
-//     // const parsed = JSON.parse(cleanedContent);
-//     // const { role, summary } = parsed;
-
-//     // return successResponse({
-//     //   data: { summary, useage: chat.usage, role },
-//     //   message: "Summary Generated",
-//     // });
-
-//     const stream = await openai.chat.completions.create({
-//       model: process.env.AI_MODEL!,
-//       stream: true,
-//       messages: [
-//         { role: "system", content: SYSTEM_PROMPT },
-//         { role: "user", content: user_prompt },
-//       ],
-//     });
-
-//     const encoder = new TextEncoder();
-
-//     const readableStream = new ReadableStream({
-//       async start(controller) {
-//         try {
-//           for await (const chunk of stream) {
-//             const delta = chunk.choices?.[0]?.delta?.content;
-//             if (delta) controller.enqueue(encoder.encode(delta));
-//           }
-//         } catch (err) {
-//           console.log(err);
-//           controller.enqueue(encoder.encode("\n\n[Stream error]"));
-//         } finally {
-//           controller.close();
-//         }
-//       },
-//     });
-
-//     return new NextResponse(readableStream, {
-//       headers: {
-//         "Content-Type": "text/plain; charset=utf-8",
-//         "Cache-Control": "no-cache",
-//       },
-//     });
-//   } catch (e) {
-//     if (e instanceof Error)
-//       return errorResponse({ message: e.message, status: 500 });
-//   }
-// }
-
 import { SYSTEM_PROMPT, USER_PROMPT } from "@/constants";
-import { errorResponse } from "@/utils";
-import { readFileSync, writeFileSync } from "fs";
+import { fetchItem } from "@/lib/ddb";
+import { openai } from "@/lib/openai"; // extracted to lib
+import { generateFetchS3Url, uploadToS3 } from "@/lib/s3";
+import { errorResponse, successResponse } from "@/utils";
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
-import path from "path";
+
+// Flow:
+// Fetch items from DB
+// use s3_summary to check if summary already exist:
+// If Exist, send summary, no need to re-generate
+// else generate summary using s3_processed
+// store summary to summary folder in bucket
+// update the role in dynamodb
 
 export async function GET(
   request: NextRequest,
@@ -111,38 +20,59 @@ export async function GET(
   try {
     const { docId } = await params;
 
-    const filePath = path.join(process.cwd(), "src", "temp", `${docId}.json`);
-    const fileContent = readFileSync(filePath, "utf-8");
-    const parsedFile = JSON.parse(fileContent);
-    const { extractedText, summary, role } = parsedFile;
+    // Step 1: Fetch metadata from DB
+    const { data, status, message } = await fetchItem({
+      key: { docId },
+      tableName: process.env.TABLE_NAME_DOCS!,
+    });
 
-    // If already summarized, return early
-    if (summary && role) {
-      return NextResponse.json({
-        data: { summary, role },
-        message: "Already summarized",
-      });
+    if (!status || !data) return errorResponse({ message });
+
+    // Step 2: Check if summary already exists in S3
+    try {
+      const summaryUrl = await generateFetchS3Url(data.s3_summary);
+      console.log(summaryUrl);
+      const summaryRes = await fetch(summaryUrl);
+      console.log(summaryRes);
+      if (summaryRes.ok) {
+        const summary = await summaryRes.text();
+        return successResponse({
+          data: { summary },
+          message: "Already summarized",
+        });
+      }
+    } catch (e) {
+      console.log(e);
+      // Summary doesn't exist, continue to generate
     }
 
-    const user_prompt = USER_PROMPT.replace(
-      "[[DOCUMENT_CONTENT_HERE]]",
-      extractedText
-    );
+    // Step 3: Fetch processed text
+    const processedUrl = await generateFetchS3Url(data.s3_processed);
+    const processedRes = await fetch(processedUrl);
+    if (!processedRes.ok) {
+      return errorResponse({
+        message: "Failed to fetch from S3",
+        status: processedRes.status,
+      });
+    }
+    const processedText = await processedRes.text();
 
-    const openai = new OpenAI({
-      baseURL: process.env.OPENAI_URI,
-      apiKey: process.env.OPENROUTER_API_KEY,
-    });
+    // Step 4: Prepare OpenAI prompt
+    const userPrompt = USER_PROMPT.replace(
+      "[[DOCUMENT_CONTENT_HERE]]",
+      processedText
+    );
 
     const stream = await openai.chat.completions.create({
       model: process.env.AI_MODEL!,
       stream: true,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: user_prompt },
+        { role: "user", content: userPrompt },
       ],
     });
 
+    // Step 5: Stream + Extract + Upload
     const encoder = new TextEncoder();
     let fullContent = "";
 
@@ -160,7 +90,6 @@ export async function GET(
         } finally {
           controller.close();
 
-          // Once streaming is done, clean and parse the content
           try {
             let cleaned = fullContent.trim();
             if (cleaned.startsWith("```json") || cleaned.startsWith("```")) {
@@ -169,18 +98,17 @@ export async function GET(
                 .replace(/```$/, "")
                 .trim();
             }
+            const { summary } = JSON.parse(cleaned);
 
-            const parsed = JSON.parse(cleaned);
-            const { role, summary } = parsed;
+            const s3Key = `${process.env.SUMMARY}/${docId}.txt`;
 
-            // Save back to the file
-            const updated = {
-              ...parsedFile,
-              role,
-              summary,
-            };
+            await uploadToS3({
+              key: s3Key,
+              contentType: "text/plain",
+              body: summary,
+            });
 
-            writeFileSync(filePath, JSON.stringify(updated, null, 2), "utf-8");
+            // TODO: Update DynamoDB with role & s3_summary
           } catch (err) {
             console.error("Failed to parse and write summary:", err);
           }
@@ -195,7 +123,7 @@ export async function GET(
       },
     });
   } catch (e) {
-    if (e instanceof Error)
-      return errorResponse({ message: e.message, status: 500 });
+    console.error("Fatal error:", e);
+    return errorResponse({ message: "Internal server error", status: 500 });
   }
 }

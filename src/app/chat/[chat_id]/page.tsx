@@ -22,7 +22,7 @@ const ChatDetailsPage = async ({
 
   const metadataData = await metadataResponse.json();
 
-  return <ChatDetails metadata={metadataData.data} docId={docId} />;
+  return <ChatDetails metadata={metadataData.data.metadata} docId={docId} />;
 };
 
 export default ChatDetailsPage;

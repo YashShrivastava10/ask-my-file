@@ -1,11 +1,12 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export const useFile = () => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  // const router = useRouter();
+  const router = useRouter();
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -39,27 +40,38 @@ export const useFile = () => {
     const formData = new FormData();
     formData.append("file", file);
 
-    // Simulate upload
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const contentType = file.type;
+    const fileName = file.name;
 
-    const response = await fetch("/api/upload", {
+    const generatePreSignedResponse = await fetch("/api/upload", {
       method: "POST",
-      body: formData,
+      body: JSON.stringify({ contentType, fileName }),
     });
-    const result = await response.json();
+    const generatePreSignedResult = await generatePreSignedResponse.json();
 
-    if (!result.status) throw new Error(result.message);
+    if (!generatePreSignedResult.status)
+      throw new Error(generatePreSignedResult.message);
 
-    const { uploadUrl } = result.data;
+    const { docId, uploadUrl } = generatePreSignedResult.data;
 
-    await fetch(uploadUrl, {
+    const uploadResponse = await fetch(uploadUrl, {
       method: "PUT",
       mode: "cors",
       body: file,
     });
-    setIsUploading(false);
 
-    // router.push(`/chat/${docId}`);
+    const key = new URL(uploadResponse.url).pathname.slice(1);
+
+    const parseRespoonse = await fetch(
+      `/api/parse-file?key=${key}&fileName=${fileName}`
+    );
+
+    const parseResult = await parseRespoonse.json();
+
+    if (!parseResult.status) throw new Error(parseResult.message);
+
+    setIsUploading(false);
+    router.push(`/chat/${docId}`);
   };
 
   return {

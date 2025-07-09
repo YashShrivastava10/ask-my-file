@@ -1,106 +1,40 @@
 import { generateS3UploadUrl } from "@/lib/s3";
-import { parseDocx, parsePDF } from "@/services";
-import parseImageWithCleanup from "@/services/parseImage";
 import { errorResponse, successResponse } from "@/utils";
-import { existsSync, mkdirSync, writeFileSync } from "fs";
-import mime from "mime-types";
 import { NextRequest } from "next/server";
-import os from "os";
 import path from "path";
 
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData();
-    const file = formData.get("file") as File;
+    const { contentType, fileName } = await request.json();
 
-    if (!file) {
-      return errorResponse({ message: "No file provided", status: 400 });
-    }
+    console.log(contentType);
 
-    const allowedTypes = [".pdf", ".docx", ".txt", ".jpg", ".jpeg", ".png"];
-    const fileExtension = path.extname(file.name).toLowerCase();
-
-    if (!allowedTypes.includes(fileExtension)) {
+    if (!(contentType && fileName))
       return errorResponse({
-        message:
-          "Invalid file type. Accepted types: PDF, DOCX, TXT, JPG, JPEG, PNG",
+        message: "File name or Content type is missing",
         status: 400,
       });
-    }
 
-    // Convert file to buffer
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    // Create temporary file path
-    const tempDir = os.tmpdir();
-    const tempFilePath = path.join(tempDir, `${Date.now()}-${file.name}`);
-
-    const parsers = {
-      ".pdf": () => parsePDF(buffer),
-      ".docx": () => parseDocx(buffer),
-      ".txt": () => Promise.resolve(buffer.toString("utf-8")),
-      ".jpg": () => parseImageWithCleanup(buffer, tempFilePath),
-      ".jpeg": () => parseImageWithCleanup(buffer, tempFilePath),
-      ".png": () => parseImageWithCleanup(buffer, tempFilePath),
-    };
-
-    let extractedText = "";
-
-    try {
-      const parser = parsers[fileExtension as keyof typeof parsers];
-
-      if (!parser) {
-        return errorResponse({
-          message: "Unsupported file type",
-          status: 400,
-        });
-      }
-
-      extractedText = await parser();
-
-      const docId = `doc-${Date.now()}`;
-      const fileSize = (file.size / (1024 * 1024)).toFixed(2) + " MB";
-      const fileName = file.name;
-
-      const contentType = mime.lookup(file.name) || "application/octet-stream";
-      const fileLocation = `raw/${docId}${fileExtension}`;
-      const uploadUrl = await generateS3UploadUrl({
-        key: fileLocation,
-        contentType,
+    if (!(typeof contentType === "string" && typeof fileName === "string"))
+      return errorResponse({
+        message: "Incorrect type of file name or content type",
+        status: 400,
       });
 
-      const currentTime = new Date();
-      const info = {
-        docId,
-        metadata: {
-          fileSize,
-          fileName,
-          fileType: fileExtension,
-          pages: 2, // Placeholder for pages
-          uploadedAt: currentTime,
-          lastModified: currentTime,
-        },
-        extractedText,
-      };
+    const fileExtension = path.extname(fileName);
+    const docId = `doc-${Date.now()}`;
 
-      const dir = path.join(process.cwd(), "src", "temp");
-      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    const fileLocation = `raw/${docId}${fileExtension}`;
 
-      writeFileSync(
-        path.join(dir, `${docId}.json`),
-        JSON.stringify(info, null, 2),
-        "utf-8"
-      );
+    const uploadUrl = await generateS3UploadUrl({
+      key: fileLocation,
+      contentType,
+    });
 
-      return successResponse({
-        data: { docId, uploadUrl },
-        message: "File parsed successfully",
-      });
-    } catch (parseError) {
-      console.error("Parsing error:", parseError);
-      return errorResponse({ message: "Failed to parse" });
-    }
+    return successResponse({
+      data: { docId, uploadUrl },
+      message: "File parsed successfully",
+    });
   } catch (error) {
     console.error("Upload error:", error);
     return errorResponse({

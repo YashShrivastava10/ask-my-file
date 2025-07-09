@@ -1,7 +1,6 @@
+import { fetchItem } from "@/lib/ddb";
 import { errorResponse, successResponse } from "@/utils";
-import { readFileSync } from "fs";
 import { NextApiRequest } from "next";
-import path from "path";
 
 export async function GET(
   request: NextApiRequest,
@@ -10,14 +9,17 @@ export async function GET(
   try {
     const { docId } = await params;
 
-    const filePath = path.join(process.cwd(), "src", "temp", `${docId}.json`);
-    const fileContent = readFileSync(filePath, "utf-8");
+    const result = await fetchItem({
+      key: { docId },
+      tableName: process.env.TABLE_NAME_DOCS!,
+    });
 
-    const { metadata } = JSON.parse(fileContent);
+    const { status, data, message } = result;
+    if (!status) throw new Error(message);
 
     return successResponse({
-      data: metadata,
-      message: "Metadata successfult fetched",
+      data,
+      message,
     });
   } catch (e) {
     if (e instanceof Error) return errorResponse({ message: e.message });

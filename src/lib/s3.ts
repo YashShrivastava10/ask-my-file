@@ -2,7 +2,7 @@ import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { s3Client } from "./aws";
 
-export const fetchFromS3 = async (key: string) => {
+export const generateFetchS3Url = async (key: string) => {
   const command = new GetObjectCommand({
     Bucket: process.env.AWS_S3_BUCKET,
     Key: key,
@@ -15,9 +15,11 @@ export const fetchFromS3 = async (key: string) => {
 export const generateS3UploadUrl = async ({
   key,
   contentType,
+  expiresIn = 300,
 }: {
   key: string;
   contentType: string;
+  expiresIn?: number;
 }) => {
   const command = new PutObjectCommand({
     Bucket: process.env.AWS_S3_BUCKET!,
@@ -25,7 +27,7 @@ export const generateS3UploadUrl = async ({
     ContentType: contentType,
   });
 
-  const url = await getSignedUrl(s3Client, command);
+  const url = await getSignedUrl(s3Client, command, { expiresIn });
   return url;
 };
 

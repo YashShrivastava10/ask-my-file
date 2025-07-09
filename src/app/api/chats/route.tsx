@@ -1,51 +1,18 @@
-import { errorResponse, getRelativeTime, successResponse } from "@/utils";
-import { existsSync, readdirSync, readFileSync } from "fs";
-import path from "path";
-import removeMarkdown from "remove-markdown";
+import { fetchAllItems } from "@/lib/ddb";
+import { errorResponse, successResponse } from "@/utils";
 
 export async function GET() {
   try {
-    const tempDir = path.join(process.cwd(), "src", "temp");
+    const result = await fetchAllItems(process.env.TABLE_NAME_DOCS!);
 
-    if (!existsSync(tempDir)) {
-      return successResponse({
-        data: [],
-        message: "No chats found",
-      });
-    }
+    const { status, message, data } = result;
+    if (!status) return errorResponse({ message });
 
-    const files = readdirSync(tempDir);
-
-    const chats = files.map((fileName) => {
-      const filePath = path.join(tempDir, fileName);
-      const content = readFileSync(filePath, "utf-8");
-      const parsed = JSON.parse(content);
-
-      const { docId, metadata, summary } = parsed;
-      const fullSummary = summary ?? "";
-      const plainSummary = removeMarkdown(fullSummary)
-        .replace(/\s+/g, " ")
-        .trim();
-
-      const charLimit = 100;
-      const summaryPreview =
-        plainSummary.length > charLimit
-          ? plainSummary.slice(0, charLimit) + "..."
-          : plainSummary;
-
-      const { lastModified, fileName: name } = metadata;
-      const timeAgo = getRelativeTime(lastModified);
-
-      return {
-        docId,
-        title: name,
-        timeAgo,
-        summary: summaryPreview,
-      };
-    });
+    if (!data || !data.length)
+      return successResponse({ data: [], message: "No Items found" });
 
     return successResponse({
-      data: chats,
+      data,
       message: "Chats fetched successfully",
     });
   } catch (e) {
