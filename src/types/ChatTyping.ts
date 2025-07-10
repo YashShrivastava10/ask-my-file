@@ -7,7 +7,11 @@ export type Chat = {
     lastModified: "string";
     fileSize: "string";
     fileType: "string";
+    timeAgo: string;
   };
   docId: "string";
   s3_raw: "string";
+  s3_summary: string;
+  summary: string;
+  role: string;
 };

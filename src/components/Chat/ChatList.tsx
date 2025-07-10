@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Card } from "../ui";
 
 export const ChatList = ({ chat }: { chat: Chat }) => {
-  const { docId, metadata } = chat;
+  const { docId, metadata, summary } = chat;
   return (
     <Card>
       <Link href={`/chat/${docId}`}>
@@ -20,11 +20,11 @@ export const ChatList = ({ chat }: { chat: Chat }) => {
               <ArrowRight className="text-muted-foreground size-4 flex-shrink-0" />
             </div>
             <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-              {/* {metadata.summary} */}
+              {summary}
             </p>
             <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
               <Clock className="h-3 w-3" />
-              {/* {metadata.timeAgo} */}
+              {metadata.timeAgo}
             </div>
           </div>
         </div>

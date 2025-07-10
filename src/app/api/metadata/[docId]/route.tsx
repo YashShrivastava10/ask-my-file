@@ -1,5 +1,5 @@
 import { fetchItem } from "@/lib/ddb";
-import { errorResponse, successResponse } from "@/utils";
+import { errorResponse, getRelativeTime, successResponse } from "@/utils";
 import { NextApiRequest } from "next";
 
 export async function GET(
@@ -15,7 +15,11 @@ export async function GET(
     });
 
     const { status, data, message } = result;
+
     if (!status) throw new Error(message);
+
+    if (data)
+      data.metadata.timeAgo = getRelativeTime(data.metadata.lastModified);
 
     return successResponse({
       data,

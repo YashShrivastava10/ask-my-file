@@ -1,4 +1,9 @@
-import { GetCommand, PutCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  GetCommand,
+  PutCommand,
+  ScanCommand,
+  UpdateCommand,
+} from "@aws-sdk/lib-dynamodb";
 import { dynamodb } from "./aws";
 
 export const saveItem = async <T extends Record<string, unknown>>(
@@ -70,5 +75,46 @@ export const fetchAllItems = async (tableName: string) => {
   } catch (e) {
     console.error(e);
     return { status: false, message: "Unable to fetch all Items" };
+  }
+};
+
+export const updateItem = async ({
+  key,
+  tableName,
+  updates,
+}: {
+  tableName: string;
+  key: Record<string, unknown>;
+  updates: Record<string, unknown>;
+}) => {
+  try {
+    // Build update expression
+    const updateExpression = `SET ${Object.keys(updates)
+      .map((k, i) => `#key${i} = :val${i}`)
+      .join(", ")}`;
+
+    const expressionAttributeNames = Object.keys(updates).reduce(
+      (acc, k, i) => ({ ...acc, [`#key${i}`]: k }),
+      {}
+    );
+
+    const expressionAttributeValues = Object.values(updates).reduce<
+      Record<string, unknown>
+    >((acc, v, i) => ({ ...acc, [`:val${i}`]: v }), {});
+
+    await dynamodb.send(
+      new UpdateCommand({
+        TableName: tableName,
+        Key: key,
+        UpdateExpression: updateExpression,
+        ExpressionAttributeNames: expressionAttributeNames,
+        ExpressionAttributeValues: expressionAttributeValues,
+      })
+    );
+
+    return { status: true };
+  } catch (e) {
+    console.error("Update failed:", e);
+    return { status: false };
   }
 };

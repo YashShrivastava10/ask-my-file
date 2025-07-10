@@ -1,6 +1,6 @@
 import { SYSTEM_PROMPT, USER_PROMPT } from "@/constants";
-import { fetchItem } from "@/lib/ddb";
-import { openai } from "@/lib/openai"; // extracted to lib
+import { fetchItem, updateItem } from "@/lib/ddb";
+import { openai } from "@/lib/openai";
 import { generateFetchS3Url, uploadToS3 } from "@/lib/s3";
 import { errorResponse, successResponse } from "@/utils";
 import { NextRequest, NextResponse } from "next/server";
@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 // If Exist, send summary, no need to re-generate
 // else generate summary using s3_processed
 // store summary to summary folder in bucket
-// update the role in dynamodb
+// update the role and 2 lines of summary in dynamodb
 
 export async function GET(
   request: NextRequest,
@@ -31,9 +31,9 @@ export async function GET(
     // Step 2: Check if summary already exists in S3
     try {
       const summaryUrl = await generateFetchS3Url(data.s3_summary);
-      console.log(summaryUrl);
+
       const summaryRes = await fetch(summaryUrl);
-      console.log(summaryRes);
+
       if (summaryRes.ok) {
         const summary = await summaryRes.text();
         return successResponse({
@@ -98,7 +98,7 @@ export async function GET(
                 .replace(/```$/, "")
                 .trim();
             }
-            const { summary } = JSON.parse(cleaned);
+            const { role, summary } = JSON.parse(cleaned);
 
             const s3Key = `${process.env.SUMMARY}/${docId}.txt`;
 
@@ -108,7 +108,15 @@ export async function GET(
               body: summary,
             });
 
-            // TODO: Update DynamoDB with role & s3_summary
+            await updateItem({
+              key: { docId },
+              tableName: process.env.TABLE_NAME_DOCS!,
+              updates: {
+                s3_summary: s3Key,
+                role,
+                summary: summary.slice(0, 200),
+              },
+            });
           } catch (err) {
             console.error("Failed to parse and write summary:", err);
           }

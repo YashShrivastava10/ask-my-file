@@ -1,5 +1,5 @@
 import { fetchAllItems } from "@/lib/ddb";
-import { errorResponse, successResponse } from "@/utils";
+import { errorResponse, getRelativeTime, successResponse } from "@/utils";
 
 export async function GET() {
   try {
@@ -10,6 +10,11 @@ export async function GET() {
 
     if (!data || !data.length)
       return successResponse({ data: [], message: "No Items found" });
+
+    data.map(
+      (item) =>
+        (item.metadata.timeAgo = getRelativeTime(item.metadata.lastModified))
+    );
 
     return successResponse({
       data,
